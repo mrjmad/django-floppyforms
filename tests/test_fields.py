@@ -2,6 +2,7 @@ import django
 import decimal
 from datetime import datetime
 from django.test import TestCase
+from django.forms import Form as DjangoForm
 
 import floppyforms.__future__ as forms
 
@@ -35,6 +36,17 @@ class DateTimeFieldTests(TestCase):
             form.cleaned_data['datetime_field'],
             datetime(2099, 12, 31))
 
+    def test_data_is_being_parsed_djangoform(self):
+        class SampleForm(DjangoForm):
+            datetime_field = forms.DateTimeField()
+
+        form = SampleForm({'datetime_field': '2099-12-31'})
+        form.full_clean()
+        self.assertTrue(form.is_valid())
+        self.assertEqual(
+            form.cleaned_data['datetime_field'],
+            datetime(2099, 12, 31))
+
 
 class FloatFieldTests(TestCase):
     def test_parse(self):
@@ -45,6 +57,36 @@ class FloatFieldTests(TestCase):
 
     def test_pass_values(self):
         class FloatForm(forms.Form):
+            no_options = forms.FloatField()
+            min_value = forms.FloatField(min_value=1.234)
+            max_value = forms.FloatField(max_value=9.999)
+            step_attr = forms.FloatField(widget=forms.NumberInput(attrs={
+                'step': '0.01'
+            }))
+
+        rendered = str(FloatForm()['no_options'])
+        self.assertHTMLEqual(rendered, """
+            <input type="number" name="no_options" id="id_no_options"
+                step="any" required>
+        """)
+        rendered = str(FloatForm()['min_value'])
+        self.assertHTMLEqual(rendered, """
+            <input type="number" name="min_value" id="id_min_value"
+                min="1.234" step="any" required>
+        """)
+        rendered = str(FloatForm()['max_value'])
+        self.assertHTMLEqual(rendered, """
+            <input type="number" name="max_value" id="id_max_value"
+                max="9.999" step="any" required>
+        """)
+        rendered = str(FloatForm()['step_attr'])
+        self.assertHTMLEqual(rendered, """
+            <input type="number" name="step_attr" id="id_step_attr"
+                step="0.01" required>
+        """)
+
+    def test_pass_values_djangoform(self):
+        class FloatForm(DjangoForm):
             no_options = forms.FloatField()
             min_value = forms.FloatField(min_value=1.234)
             step_attr = forms.FloatField(widget=forms.NumberInput(attrs={
@@ -66,6 +108,7 @@ class FloatFieldTests(TestCase):
             <input type="number" name="step_attr" id="id_step_attr"
                 step="0.01" required>
         """)
+
 
 
 class IntegerFieldTests(TestCase):
@@ -96,6 +139,27 @@ class IntegerFieldTests(TestCase):
             <input type="number" name="third" id="id_third" min="10" max="150" required>
         </p>""")
 
+    def test_pass_values_djangoform(self):
+        class IntForm(DjangoForm):
+            num = forms.IntegerField(max_value=10)
+            other = forms.IntegerField()
+            third = forms.IntegerField(min_value=10, max_value=150)
+
+        rendered = IntForm().as_p()
+        self.assertHTMLEqual(rendered, """
+        <p>
+            <label for="id_num">Num:</label>
+            <input type="number" name="num" id="id_num" max="10" required>
+        </p>
+        <p>
+            <label for="id_other">Other:</label>
+            <input type="number" name="other" id="id_other" required>
+        </p>
+        <p>
+            <label for="id_third">Third:</label>
+            <input type="number" name="third" id="id_third" min="10" max="150" required>
+        </p>""")
+
 
 class DecimalFieldTests(TestCase):
     def test_parse_decimal(self):
@@ -106,6 +170,27 @@ class DecimalFieldTests(TestCase):
 
     def test_pass_values(self):
         class DecimalForm(forms.Form):
+            num = forms.DecimalField(decimal_places=2, max_value=10.5)
+            other = forms.DecimalField(decimal_places=1)
+            third = forms.DecimalField(decimal_places=3, min_value=-10, max_value=15)
+
+        rendered = DecimalForm().as_p()
+        self.assertHTMLEqual(rendered, """
+        <p>
+            <label for="id_num">Num:</label>
+            <input type="number" name="num" id="id_num" max="10.5" step="0.01" required>
+        </p>
+        <p>
+            <label for="id_other">Other:</label>
+            <input type="number" name="other" id="id_other" step="0.1" required>
+        </p>
+        <p>
+            <label for="id_third">Third:</label>
+            <input type="number" name="third" id="id_third" min="-10" max="15" step="0.001" required>
+        </p>""")
+
+    def test_pass_values_djangoform(self):
+        class DecimalForm(DjangoForm):
             num = forms.DecimalField(decimal_places=2, max_value=10.5)
             other = forms.DecimalField(decimal_places=1)
             third = forms.DecimalField(decimal_places=3, min_value=-10, max_value=15)

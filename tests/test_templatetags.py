@@ -769,7 +769,7 @@ class WidgetTagTest(TestCase):
 
         class TestForm(forms.Form):
             test = forms.CharField(widget=MediaWidget)
-            test2 = forms.CharField(widget=TextInput)
+            test2 = forms.CharField(widget=TextInput, required=False)
 
         self.assertHTMLEqual(render("""
         {% for field in form %}

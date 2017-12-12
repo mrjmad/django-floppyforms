@@ -6,6 +6,7 @@ import sys
 import django
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import models
+from django.forms import Form as DjangoForm
 from django.template import Context, Template
 from django.template.loader import render_to_string
 from django.test import TestCase
@@ -13,6 +14,7 @@ from django.test.utils import override_settings
 from django.utils.dates import MONTHS
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.timezone import now
+from django.utils.translation import ugettext_lazy as _
 
 import floppyforms as forms
 
@@ -1020,6 +1022,47 @@ class WidgetRenderingTest(TestCase):
         self.assertFalse(SplitForm(data=invalid).is_valid())
 
         class SplitForm(forms.Form):
+            split = forms.SplitDateTimeField(
+                widget=forms.SplitHiddenDateTimeWidget,
+            )
+
+        rendered = SplitForm().as_p()
+        self.assertHTMLEqual(rendered, """
+        <input type="hidden" name="split_0" required id="id_split_0">
+        <input type="hidden" name="split_1" required id="id_split_1">
+        """)
+
+    def test_split_datetime_djangoform(self):
+        """Split date time widget"""
+        class SplitForm(DjangoForm):
+            split = forms.SplitDateTimeField()
+
+        rendered = SplitForm().as_p()
+        self.assertHTMLEqual(rendered, """
+        <p>
+            <label for="id_split_0">Split:</label>
+            <input type="date" name="split_0" required id="id_split_0">
+            <input type="time" name="split_1" required id="id_split_1">
+        </p>""")
+
+        class SplitForm(DjangoForm):
+            split = forms.SplitDateTimeField(required=False)
+
+        rendered = SplitForm().as_p()
+        self.assertHTMLEqual(rendered, """
+        <p>
+            <label for="id_split_0">Split:</label>
+            <input type="date" name="split_0" id="id_split_0">
+            <input type="time" name="split_1" id="id_split_1">
+        </p>""")
+
+        valid = {'split_0': '2011-02-06', 'split_1': '12:12'}
+        self.assertTrue(SplitForm(data=valid).is_valid())
+
+        invalid = {'split_0': '2011-02-06', 'split_1': ''}
+        self.assertFalse(SplitForm(data=invalid).is_valid())
+
+        class SplitForm(DjangoForm):
             split = forms.SplitDateTimeField(
                 widget=forms.SplitHiddenDateTimeWidget,
             )

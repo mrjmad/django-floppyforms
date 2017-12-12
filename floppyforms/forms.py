@@ -38,4 +38,4 @@ class BaseForm(LayoutRenderer, forms.BaseForm):
 
 
 class Form(LayoutRenderer, forms.Form):
-    use_required_attribute = False
+    pass
