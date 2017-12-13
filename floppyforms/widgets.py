@@ -40,6 +40,24 @@ __all__ = (
 class Widget(forms.Widget):
     is_required = False
 
+    def render(self, name, value, attrs=None, **kwargs):
+        """
+        Returns this Widget rendered as HTML, as a Unicode string.
+        The 'value' given is not guaranteed to be valid input, so subclass
+        implementations should program defensively.
+        """
+        raise NotImplementedError('subclasses of Widget must provide a render() method')
+
+    def build_attrs(self, extra_attrs=None, **kwargs):
+        """
+        Backported from Django 1.10
+        Helper function for building an attribute dictionary.
+        """
+        attrs = dict(self.attrs, **kwargs)
+        if extra_attrs:
+            attrs.update(extra_attrs)
+        return attrs
+
     # Backported from Django 1.7
     @property
     def is_hidden(self):
@@ -49,6 +67,10 @@ class Widget(forms.Widget):
     if not hasattr(forms.Widget, 'format_value'):
         def format_value(self, value):
             return self._format_value(value)
+
+    # Ignore required attribute in Django >= 1.10 or it will be rendered twice
+    def use_required_attribute(self, initial):
+        return False
 
 
 class Input(Widget):
@@ -78,12 +100,14 @@ class Input(Widget):
 
     def get_context(self, name, value, attrs=None):
         context = {
+            'widget': self,
             'type': self.input_type,
             'name': name,
             'hidden': self.is_hidden,
             'required': self.is_required,
             'True': True,
         }
+
         # True is injected in the context to allow stricter comparisons
         # for widget attrs. See #25.
         if self.is_hidden:
@@ -115,7 +139,7 @@ class Input(Widget):
         template_name = kwargs.pop('template_name', None)
         if template_name is None:
             template_name = self.template_name
-        context = self.get_context(name, value, attrs=attrs or {}, **kwargs)
+        context = self.get_context(name, value, attrs=attrs or {})
         context = flatten_contexts(self.context_instance, context)
         return loader.render_to_string(template_name, context)
 
@@ -138,10 +162,10 @@ class PasswordInput(TextInput):
         super(PasswordInput, self).__init__(attrs)
         self.render_value = render_value
 
-    def render(self, name, value, attrs=None):
+    def render(self, name, value, attrs=None, **kwargs):
         if not self.render_value:
             value = None
-        return super(PasswordInput, self).render(name, value, attrs)
+        return super(PasswordInput, self).render(name, value, attrs, **kwargs)
 
 
 class HiddenInput(Input):
@@ -155,6 +179,8 @@ class MultipleHiddenInput(HiddenInput):
         super(MultipleHiddenInput, self).__init__(attrs)
         self.choices = choices
 
+    # TODO : use a specific template and replace this render method by
+    # get_context()
     def render(self, name, value, attrs=None, choices=()):
         if value is None:
             value = []
@@ -181,8 +207,8 @@ class SlugInput(TextInput):
     template_name = 'floppyforms/slug.html'
 
     """<input type="text"> validating slugs with a pattern"""
-    def get_context(self, name, value, attrs):
-        context = super(SlugInput, self).get_context(name, value, attrs)
+    def get_context(self, name, value, attrs, **kwargs):
+        context = super(SlugInput, self).get_context(name, value, attrs, **kwargs)
         context['attrs']['pattern'] = "[-\w]+"
         return context
 
@@ -194,8 +220,8 @@ class IPAddressInput(TextInput):
     ip_pattern = ("(25[0-5]|2[0-4]\d|[0-1]?\d?\d)(\.(25"
                   "[0-5]|2[0-4]\d|[0-1]?\d?\d)){3}")
 
-    def get_context(self, name, value, attrs):
-        context = super(IPAddressInput, self).get_context(name, value, attrs)
+    def get_context(self, name, value, attrs, **kwargs):
+        context = super(IPAddressInput, self).get_context(name, value, attrs, **kwargs)
         context['attrs']['pattern'] = self.ip_pattern
         return context
 
@@ -206,11 +232,11 @@ class FileInput(Input):
     needs_multipart_form = True
     omit_value = True
 
-    def render(self, name, value, attrs=None):
+    def render(self, name, value, attrs=None, **kwargs):
         if self.omit_value:
             # File inputs can't render an existing value if it's not saved
             value = None
-        return super(FileInput, self).render(name, value, attrs=attrs)
+        return super(FileInput, self).render(name, value, attrs=attrs, **kwargs)
 
     def value_from_datadict(self, data, files, name):
         return files.get(name, None)
@@ -583,10 +609,111 @@ class CheckboxSelectMultiple(SelectMultiple):
 
 
 class MultiWidget(forms.MultiWidget):
+    template_name = 'django/forms/widgets/multiwidget.html'
+
     # Backported from Django 1.7
     @property
     def is_hidden(self):
         return all(w.is_hidden for w in self.widgets)
+
+    def build_attrs(self, base_attrs, extra_attrs=None, **kwargs):
+        """
+        Backported from Django 1.10
+        Helper function for building an attribute dictionary.
+        """
+        attrs = dict(self.attrs, **kwargs)
+        attrs.update(base_attrs)
+        if extra_attrs:
+            attrs.update(extra_attrs)
+        return attrs
+
+    if django.VERSION < (1, 11):
+        # backport
+        def format_value(self, value):
+            """
+            Return a value as it should appear when rendered in a template.
+            """
+            if value == '' or value is None:
+                return None
+            if self.is_localized:
+                return formats.localize_input(value)
+            return force_text(value)
+
+        # backport port
+        def get_context(self, name, value, attrs):
+            # context = super(MultiWidget, self).get_context(name, value, attrs)
+            # the following is an inline version of the previous call
+            context = {}
+            context['widget'] = {
+                'name': name,
+                'is_hidden': self.is_hidden,
+                'required': self.is_required,
+                'value': self.format_value(value),
+                'attrs': self.build_attrs(self.attrs, attrs),
+                'template_name': self.template_name,
+            }
+            if self.is_localized:
+                for widget in self.widgets:
+                    widget.is_localized = self.is_localized
+            # value is a list of values, each corresponding to a widget
+            # in self.widgets.
+            if not isinstance(value, list):
+                value = self.decompress(value)
+
+            final_attrs = context['widget']['attrs']
+            input_type = final_attrs.pop('type', None)
+            id_ = final_attrs.get('id')
+            subwidgets = []
+            for i, widget in enumerate(self.widgets):
+                if input_type is not None:
+                    widget.input_type = input_type
+                widget_name = '%s_%s' % (name, i)
+                try:
+                    widget_value = value[i]
+                except IndexError:
+                    widget_value = None
+                if id_:
+                    widget_attrs = final_attrs.copy()
+                    widget_attrs['id'] = '%s_%s' % (id_, i)
+                else:
+                    widget_attrs = final_attrs
+                subwidgets.append(widget.get_context(widget_name, widget_value, widget_attrs)['widget'])
+            context['widget']['subwidgets'] = subwidgets
+            return context
+
+    def render(self, name, value, attrs=None, **kwargs):
+        context = self.get_context(name, value, attrs)
+        if self.is_localized:
+            for widget in self.widgets:
+                widget.is_localized = self.is_localized
+        # value is a list of values, each corresponding to a widget
+        # in self.widgets.
+        if not isinstance(value, list):
+            value = self.decompress(value)
+
+        final_attrs = context['widget']['attrs']
+        input_type = final_attrs.pop('type', None)
+        id_ = final_attrs.get('id')
+        rendered_template = ''
+        for i, widget in enumerate(self.widgets):
+            if input_type is not None:
+                widget.input_type = input_type
+            widget_name = '%s_%s' % (name, i)
+            try:
+                widget_value = value[i]
+            except IndexError:
+                widget_value = None
+            if id_:
+                widget_attrs = final_attrs.copy()
+                widget_attrs['id'] = '%s_%s' % (id_, i)
+            else:
+                widget_attrs = final_attrs
+            rendered_template += widget.render(widget_name, widget_value, widget_attrs, **kwargs)
+        return rendered_template
+
+    # Ignore required attribute in Django >= 1.10 or it will be rendered twice
+    def use_required_attribute(self, initial):
+        return False
 
 
 class SplitDateTimeWidget(MultiWidget):
@@ -666,7 +793,7 @@ class SelectDateWidget(forms.Widget):
         context['attrs'] = attrs
         return context
 
-    def render(self, name, value, attrs=None, extra_context={}):
+    def render(self, name, value, attrs=None, **kwargs):
         try:
             year_val, month_val, day_val = value.year, value.month, value.day
         except AttributeError:
@@ -686,8 +813,7 @@ class SelectDateWidget(forms.Widget):
                     if match:
                         year_val, month_val, day_val = map(int, match.groups())
 
-        context = self.get_context(name, value, attrs=attrs,
-                                   extra_context=extra_context)
+        context = self.get_context(name, value, attrs=attrs)
 
         context['year_choices'] = [(i, i) for i in self.years]
         context['year_val'] = year_val

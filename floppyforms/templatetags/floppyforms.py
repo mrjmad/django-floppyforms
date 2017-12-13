@@ -494,7 +494,7 @@ class BaseFormRenderNode(BaseFormNode):
             else:
                 template_name = self.get_template_name(context)
             return get_template(context, template_name)
-        except:
+        except Exception:
             if django.VERSION < (1, 10):
                 if settings.DEBUG:
                     raise
