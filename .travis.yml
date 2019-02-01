@@ -36,7 +36,7 @@ before_install:
   # Required to install Pillow
   - sudo apt-get -q -y install build-essential
   # GIS requirements.
-  - sudo apt-get -q -y install binutils gdal-bin libproj-dev libgeos-c1
+  - sudo apt-get -q -y install binutils gdal-bin libproj-dev libgeos-c1v5
 install:
   # pip >= 8 dropped Python 3.2 support
   - pip install pip wheel
