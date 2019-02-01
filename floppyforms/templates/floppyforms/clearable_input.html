@@ -1,8 +1,8 @@
-{% load i18n %}{% if value.url %}{{ initial_text }}: <a target="_blank" href="{{ value.url }}">{{ value }}</a>
-{% if not required %}
+{% load i18n %}{% if widget.value.url %}{{ initial_text }}: <a target="_blank" href="{{ widget.value.url }}">{{ widget.value }}</a>
+{% if not widget.required %}
 <input type="checkbox" name="{{ checkbox_name }}" id="{{ checkbox_id }}">
 <label for="{{ checkbox_id }}">{{ clear_checkbox_label }}</label>
 {% endif %}<br />
 {{ input_text }}:
 {% endif %}
-<input type="{{ type }}" name="{{ name }}"{% if required %} required{% endif %}{% include "floppyforms/attrs.html" %}>
+<input type="{{ widget.type }}" name="{{ widget.name }}"{% if widget.required %} required{% endif %}{% include "floppyforms/attrs.html" %}>

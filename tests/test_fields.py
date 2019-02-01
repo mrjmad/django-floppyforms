@@ -231,7 +231,7 @@ class ImageFieldTests(TestCase):
             name='image_field',
             value=instance.image_field,
             attrs={})
-        self.assertEqual(context['value'], None)
+        self.assertEqual(context['widget']['value'], None)
 
 
 class MultipleChoiceFieldTests(TestCase):

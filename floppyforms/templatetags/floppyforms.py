@@ -1,20 +1,22 @@
-import django
 from collections import defaultdict
 from contextlib import contextmanager
 
+import django
+
 from django.conf import settings
+from django.template import (Library, Node, Variable,
+                             TemplateSyntaxError, VariableDoesNotExist)
+from django.template.base import token_kwargs
+from django.utils.functional import empty
+
+from ..compat import get_template, flatten_context
+
 
 try:
     from django.forms.utils import ErrorList
 except ImportError:
     # Fall back to old module name for Django <= 1.5
     from django.forms.util import ErrorList
-from django.template import (Library, Node, Variable,
-                             TemplateSyntaxError, VariableDoesNotExist)
-from django.template.base import token_kwargs
-from django.utils.functional import empty
-
-from ..compat import get_template
 
 
 register = Library()
@@ -536,23 +538,28 @@ class BaseFormRenderNode(BaseFormNode):
     def render(self, context):
         only = self.options['only']
 
-        config = self.get_config(context)
-        config.push()
+        try:
+            config = self.get_config(context)
+            config.push()
 
-        extra_context = self.get_extra_context(context)
-        nodelist = self.get_nodelist(context, extra_context)
-        if nodelist is None:
-            return ''
+            extra_context = self.get_extra_context(context)
+            nodelist = self.get_nodelist(context, extra_context)
 
-        if only:
-            context = context.new(extra_context)
-            output = nodelist.render(context)
-        else:
-            context.update(extra_context)
-            output = nodelist.render(context)
-            context.pop()
+            if nodelist is None:
+                return ''
 
-        config.pop()
+            if only:
+                context = context.new(extra_context)
+                output = nodelist.render(context)
+            else:
+                try:
+                    context.update(extra_context)
+                    output = nodelist.render(context)
+                finally:
+                    context.pop()
+        finally:
+            config.pop()
+
         return output
 
 
@@ -567,7 +574,7 @@ class FormNode(BaseFormRenderNode):
         if not hasattr(var, '__iter__'):
             return False
         if is_formset(var):
-                return True
+            return True
         if is_form(var):
             return False
         # form duck-typing was not successful so it must be a list
@@ -669,6 +676,7 @@ class FormFieldNode(BaseFormRenderNode):
 
     def render(self, context):
         config = self.get_config(context)
+        only = self.options['only']
 
         assert len(self.variables) == 1
         try:
@@ -685,23 +693,24 @@ class FormFieldNode(BaseFormRenderNode):
                 template_name = self.options['using'].resolve(context)
             except VariableDoesNotExist:
                 return raise_or_not_variable_does_not_exist_compat_version(context)
-        if self.options['only']:
+        if only:
             context_instance = context.new(extra_context)
         else:
             context.update(extra_context)
             context_instance = context
 
-        config.push()
+        try:
+            config.push()
 
-        # Using a context manager here until Django's BoundField takes
-        # template name and context instance parameters
-        with attributes(widget, template_name=template_name,
-                        context_instance=context_instance) as widget:
-            output = bound_field.as_widget(widget=widget)
+            # Using a context manager here until Django's BoundField takes
+            # template name and context instance parameters
+            with attributes(widget, template_name=template_name,
+                            context_instance=context_instance) as widget:
+                output = bound_field.as_widget(widget=widget)
+        finally:
+            config.pop()
 
-        config.pop()
-
-        if not self.options['only']:
+        if not only:
             context.pop()
 
         if bound_field.field.show_hidden_initial:
@@ -720,41 +729,81 @@ class FormFieldNode(BaseFormRenderNode):
         return variables
 
 
-class WidgetNode(Node):
-    """A template tag for rendering a widget with the outer context available.
+if django.VERSION < (1, 11):
+    class WidgetNode(Node):
+        """A template tag for rendering a widget with the outer context available.
 
-    This is useful for for instance for using floppyforms with
-    django-sekizai."""
+        This is useful for for instance for using floppyforms with
+        django-sekizai."""
 
-    def __init__(self, field):
-        self.field = Variable(field)
+        def __init__(self, field):
+            self.field = Variable(field)
 
-    def render(self, context):
-        field = self.field.resolve(context)
+        def render(self, context):
+            field = self.field.resolve(context)
 
-        if callable(getattr(field.field.widget, 'get_context', None)):
-            name = field.html_name
-            attrs = {'id': field.auto_id}
-            value = field.value()
-            widget_ctx = field.field.widget.get_context(name, value, attrs)
-            template = field.field.widget.template_name
-        else:
-            widget_ctx = {'field': field}
-            template = 'floppyforms/dummy.html'
+            if callable(getattr(field.field.widget, 'get_context', None)):
+                name = field.html_name
+                attrs = {'id': field.auto_id}
+                value = field.value()
+                widget_ctx = field.field.widget.get_context(name, value, attrs)
+                template = field.field.widget.template_name
+            else:
+                widget_ctx = {'field': field}
+                template = 'floppyforms/dummy.html'
 
-        template = get_template(context, template)
-        context.update(widget_ctx)
-        rendered = template.render(context)
-        context.pop()
-        return rendered
+            template = get_template(context, template)
+            context.update(widget_ctx)
+            rendered = template.render(context)
+            context.pop()
+            return rendered
 
-    @classmethod
-    def parse(cls, parser, tokens):
-        bits = tokens.split_contents()
-        if len(bits) != 2:
-            raise TemplateSyntaxError("{% widget %} takes one and only one argument")
-        field = bits.pop(1)
-        return cls(field)
+        @classmethod
+        def parse(cls, parser, tokens):
+            bits = tokens.split_contents()
+            if len(bits) != 2:
+                raise TemplateSyntaxError("{% widget %} takes one and only one argument")
+            field = bits.pop(1)
+            return cls(field)
+else:
+    from django.forms.renderers import EngineMixin, BaseRenderer
+
+    class ExtContextTemplates(EngineMixin, BaseRenderer):
+        def __init__(self, renderer, context):
+            self.renderer = renderer
+            self.context = context
+
+        def render(self, template_name, context, request=None):
+            ext_context = flatten_context(self.context)
+            ext_context.update(context or {})
+            return self.renderer.render(template_name, ext_context, request)
+
+    class WidgetNode(Node):
+        """A template tag for rendering a widget with the outer context available.
+
+        This is useful for for instance for using floppyforms with
+        django-sekizai."""
+
+        def __init__(self, field):
+            self.field = Variable(field)
+
+        def render(self, context):
+            field = self.field.resolve(context)
+            renderer = field.form.renderer
+
+            try:
+                field.form.renderer = ExtContextTemplates(renderer, context)
+                return field.as_widget()
+            finally:
+                field.form.renderer = renderer
+
+        @classmethod
+        def parse(cls, parser, tokens):
+            bits = tokens.split_contents()
+            if len(bits) != 2:
+                raise TemplateSyntaxError("{% widget %} takes one and only one argument")
+            field = bits.pop(1)
+            return cls(field)
 
 
 @register.filter

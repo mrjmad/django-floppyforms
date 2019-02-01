@@ -1154,9 +1154,9 @@ class WidgetRenderingTest(TestCase):
         widget = forms.TextInput()
         try:
             rendered = widget.render('name', 'value')
-            self.assertEqual(
+            self.assertHTMLEqual(
                 rendered,
-                '<input type="text" name="name" value="value">\n',
+                '<input type="text" name="name" value="value">',
             )
         except AttributeError:
             self.fail("Rendering with no attrs should work")
@@ -1338,6 +1338,8 @@ class WidgetRenderingTest(TestCase):
 
         self.assertIsNot(widget.template_name, None)
 
+    @skipIf(django.VERSION >= (1, 11),
+        "Django >= 1.11 use template based widgets")
     def test_specify_template_in_render(self):
         """Can customize the template used at render time."""
         widget = forms.TextInput()
@@ -1405,7 +1407,7 @@ class WidgetContextTests(TestCase):
 class AttrsTemplateTests(TestCase):
     def render_attrs(self, attrs):
         return render_to_string('floppyforms/attrs.html', {
-            'attrs': attrs,
+            'widget': {'attrs': attrs},
         })
 
     def test_attrs_with_one_item(self):

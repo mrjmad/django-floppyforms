@@ -153,11 +153,18 @@ class SlugField(Field, forms.SlugField):
 class RegexField(Field, forms.RegexField):
     widget = TextInput
 
-    def __init__(self, regex, js_regex=None, max_length=None, min_length=None,
-                 error_message=None, *args, **kwargs):
+    def __init__(self, regex, js_regex=None, max_length=None, min_length=None, error_message=None, **kwargs):
         self.js_regex = js_regex
-        super(RegexField, self).__init__(regex, max_length, min_length,
-                                         *args, **kwargs)
+
+        if error_message is not None:
+            error_messages = kwargs.get('error_messages') or {}
+            error_messages['invalid'] = error_message
+            kwargs['error_messages'] = error_messages
+
+        super(RegexField, self).__init__(regex,
+                                         max_length=max_length,
+                                         min_length=min_length,
+                                         **kwargs)
 
     def widget_attrs(self, widget):
         attrs = super(RegexField, self).widget_attrs(widget) or {}
