@@ -1,6 +1,7 @@
 import datetime
 from itertools import chain
 import re
+import warnings
 
 from django import forms
 import django
@@ -95,6 +96,14 @@ else:
         # This attribute is used to inject a surrounding context in the
         # floppyforms templatetags, when rendered inside a complete form.
         context_instance = None
+
+        def __init__(self, *args, **kwargs):
+            warnings.warn("""
+                The floppyforms widgets are now deprecated. Please use django's
+                template-based widgets instead.
+                """, DeprecationWarning, stacklevel=2)
+
+            super(TemplateBasedWidget, self).__init__(*args, **kwargs)
 
         def _render(self, template_name, context, renderer=None):
             context = flatten_contexts(self.context_instance, context)
