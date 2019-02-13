@@ -270,6 +270,27 @@ class WidgetRenderingTest(TestCase):
         </p>
         """)
 
+    @skipIf(django.VERSION < (1, 9),
+        "Template setting OPTIONS.builtins has been introduced with Django 1.9")
+    @override_settings(LANGUAGE_CODE='sl', USE_I18n=True)
+    def test_with_templatetags_builtins(self):
+        """<input type="date">"""
+        class CustomDateInput(forms.DateInput):
+            template_name = 'localized_date.html'
+
+        class DateForm(forms.Form):
+            date = forms.DateField(
+                initial=datetime.date(2014, 1, 31),
+                widget=CustomDateInput)
+
+        rendered = DateForm().as_p()
+        self.assertHTMLEqual(rendered, """
+        <p>
+            <label for="id_date">Date:</label>
+            <input type="date" value="2014-01-31" name="date" id="id_date" required data-lang="sl">
+        </p>
+        """)
+
     def test_search(self):
         """<input type="search">"""
         class SearchForm(forms.Form):

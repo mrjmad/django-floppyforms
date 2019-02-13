@@ -1,3 +1,5 @@
+import django
+
 from django import forms
 from django.template.loader import get_template
 from django.utils.encoding import python_2_unicode_compatible
@@ -9,16 +11,18 @@ __all__ = ('BaseForm', 'Form',)
 
 
 @python_2_unicode_compatible
-class LayoutRenderer(object):
+class LayoutFormMixin(object):
     _render_as_template_name = 'floppyforms/_render_as.html'
+    _layout_template = None
 
     def _render_as(self, layout):
-        template_node = get_template(self._render_as_template_name)
+        template = get_template(self._render_as_template_name)
         context = get_context({
             'form': self,
             'layout': layout,
         })
-        return template_node.render(context)
+
+        return template.render(context)
 
     def __str__(self):
         return self._render_as('floppyforms/layouts/default.html')
@@ -33,9 +37,21 @@ class LayoutRenderer(object):
         return self._render_as('floppyforms/layouts/table.html')
 
 
-class BaseForm(LayoutRenderer, forms.BaseForm):
-    pass
+if django.VERSION < (1, 11):
+    class BaseForm(LayoutFormMixin, forms.BaseForm):
+        pass
 
+    class Form(LayoutFormMixin, forms.Form):
+        pass
+else:
+    from django.forms.renderers import TemplatesSetting
 
-class Form(LayoutRenderer, forms.Form):
-    pass
+    class BaseForm(LayoutFormMixin, forms.BaseForm):
+        def __init__(self, *args, **kwargs):
+            super(BaseForm, self).__init__(*args, **kwargs)
+            self.renderer = TemplatesSetting()
+
+    class Form(LayoutFormMixin, forms.Form):
+        def __init__(self, *args, **kwargs):
+            super(Form, self).__init__(*args, **kwargs)
+            self.renderer = TemplatesSetting()

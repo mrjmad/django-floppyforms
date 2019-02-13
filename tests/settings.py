@@ -27,6 +27,25 @@ STATIC_URL = '/static/'
 
 SECRET_KEY = '0'
 
+template_options = {
+    'context_processors': [
+        # Insert your TEMPLATE_CONTEXT_PROCESSORS here or use this
+        # list if you haven't customized them:
+        'django.template.context_processors.debug',
+        'django.template.context_processors.i18n',
+        'django.template.context_processors.media',
+        'django.template.context_processors.static',
+        'django.template.context_processors.tz',
+    ]
+}
+
+if django.VERSION >= (1, 9):
+    template_options['builtins'] = [
+        'django.templatetags.i18n',
+        'django.templatetags.static',
+        'django.templatetags.tz',
+    ]
+
 if django.VERSION < (1, 11):
     template_directories = []
 else:
@@ -36,26 +55,16 @@ else:
             "forms/templates/"
         )
     ]
+    
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': template_directories,
         'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                # Insert your TEMPLATE_CONTEXT_PROCESSORS here or use this
-                # list if you haven't customized them:
-                'django.template.context_processors.debug',
-                'django.template.context_processors.i18n',
-                'django.template.context_processors.media',
-                'django.template.context_processors.static',
-                'django.template.context_processors.tz',
-            ],
-        },
+        'OPTIONS': template_options,
     },
 ]
 
-
-import django
 if django.VERSION < (1, 6):
     TEST_RUNNER = 'discover_runner.DiscoverRunner'

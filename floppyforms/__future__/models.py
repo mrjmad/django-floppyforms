@@ -14,7 +14,7 @@ if django.VERSION < (1, 9):
 from django.utils import six
 
 from floppyforms import fields
-from floppyforms.forms import LayoutRenderer
+from floppyforms.forms import LayoutFormMixin
 from floppyforms.models import (ModelChoiceField, ModelMultipleChoiceField)
 from floppyforms.widgets import Textarea
 
@@ -85,7 +85,7 @@ class ModelFormMetaclass(_ModelFormMetaclass):
         return super(ModelFormMetaclass, mcs).__new__(mcs, name, bases, attrs)
 
 
-class ModelForm(six.with_metaclass(ModelFormMetaclass, LayoutRenderer, _ModelForm)):
+class ModelForm(six.with_metaclass(ModelFormMetaclass, LayoutFormMixin, _ModelForm)):
     pass
 
 
