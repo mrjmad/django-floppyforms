@@ -2,9 +2,7 @@ include README.rst
 include CHANGES.rst
 recursive-include floppyforms/templates *
 recursive-include floppyforms/static *
-recursive-include requirements *.txt
 recursive-include docs *.rst *.png
-recursive-include tests *.py *.html
-recursive-include tests/demo/templates *
-recursive-include tests/templates *
 include docs/Makefile docs/conf.py
+prune tests
+prune requirements

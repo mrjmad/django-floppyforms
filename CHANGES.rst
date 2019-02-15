@@ -4,6 +4,11 @@ Changelog
 1.8.0 (in development)
 ~~~~~~~~~~~~~~~~~~~~~~
 
+* Support for Django 1.11, 2.0 & 2.1
+* Support for Python 3.7
+* Rename ``floppyforms.forms.LayoutRenderer`` as ``LayoutFormMixin`` in order
+  to remove any ambiguity with django renderers/backend API.
+
 * `#176`_: Fix HTML validation for hidden textarea used with GIS widgets.
 * `#191`_: Support for Django 1.10. Thanks to MrJmad for the patch.
 * `#194`_: Remove official support for Python 2.6 and Python 3.2.
