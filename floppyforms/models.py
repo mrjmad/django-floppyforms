@@ -3,13 +3,13 @@ import warnings
 from django.forms import models
 
 from .fields import Field
-from .forms import LayoutRenderer
+from .forms import LayoutFormMixin
 from .widgets import Select, SelectMultiple, MultipleHiddenInput
 
 __all__ = ('ModelForm', 'ModelChoiceField', 'ModelMultipleChoiceField')
 
 
-class ModelForm(LayoutRenderer, models.ModelForm):
+class ModelForm(LayoutFormMixin, models.ModelForm):
     def __new__(cls, *args, **kwargs):
         url = 'https://github.com/gregmuellegger/django-floppyforms/tree/1.2.0/CHANGES.rst'
         warnings.warn(

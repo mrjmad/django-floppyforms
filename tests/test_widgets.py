@@ -270,6 +270,27 @@ class WidgetRenderingTest(TestCase):
         </p>
         """)
 
+    @skipIf(django.VERSION < (1, 9),
+        "Template setting OPTIONS.builtins has been introduced with Django 1.9")
+    @override_settings(LANGUAGE_CODE='sl', USE_I18n=True)
+    def test_with_templatetags_builtins(self):
+        """<input type="date">"""
+        class CustomDateInput(forms.DateInput):
+            template_name = 'localized_date.html'
+
+        class DateForm(forms.Form):
+            date = forms.DateField(
+                initial=datetime.date(2014, 1, 31),
+                widget=CustomDateInput)
+
+        rendered = DateForm().as_p()
+        self.assertHTMLEqual(rendered, """
+        <p>
+            <label for="id_date">Date:</label>
+            <input type="date" value="2014-01-31" name="date" id="id_date" required data-lang="sl">
+        </p>
+        """)
+
     def test_search(self):
         """<input type="search">"""
         class SearchForm(forms.Form):
@@ -1154,9 +1175,9 @@ class WidgetRenderingTest(TestCase):
         widget = forms.TextInput()
         try:
             rendered = widget.render('name', 'value')
-            self.assertEqual(
+            self.assertHTMLEqual(
                 rendered,
-                '<input type="text" name="name" value="value">\n',
+                '<input type="text" name="name" value="value">',
             )
         except AttributeError:
             self.fail("Rendering with no attrs should work")
@@ -1338,6 +1359,8 @@ class WidgetRenderingTest(TestCase):
 
         self.assertIsNot(widget.template_name, None)
 
+    @skipIf(django.VERSION >= (1, 11),
+        "Django >= 1.11 use template based widgets")
     def test_specify_template_in_render(self):
         """Can customize the template used at render time."""
         widget = forms.TextInput()
@@ -1405,7 +1428,7 @@ class WidgetContextTests(TestCase):
 class AttrsTemplateTests(TestCase):
     def render_attrs(self, attrs):
         return render_to_string('floppyforms/attrs.html', {
-            'attrs': attrs,
+            'widget': {'attrs': attrs},
         })
 
     def test_attrs_with_one_item(self):

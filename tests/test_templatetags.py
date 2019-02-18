@@ -771,6 +771,8 @@ class WidgetTagTest(TestCase):
             test = forms.CharField(widget=MediaWidget)
             test2 = forms.CharField(widget=TextInput, required=False)
 
+        self.maxDiff = None
+
         self.assertHTMLEqual(render("""
         {% for field in form %}
             {% widget field %}

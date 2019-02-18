@@ -35,7 +35,6 @@ if django.VERSION < (1, 8):
         if not isinstance(context, Context):
             context = Context(context)
         return context
-
 else:
     def get_template(context, template_name):
         # Django 1.8 and higher support multiple template engines. We need to

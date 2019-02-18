@@ -1,4 +1,4 @@
-{% block content %}<input type="{{ type }}" name="{{ name }}"{% if value %} value="{{ value }}"{% endif %}{% if required %} required{% endif %}{% include "floppyforms/attrs.html" %}{% if datalist %} list="{{ attrs.id }}_list"{% endif %}>{% if datalist %}
-<datalist id="{{ attrs.id }}_list">{% for item in datalist %}
+{% block content %}<input type="{{ widget.type }}" name="{{ widget.name }}"{% if widget.value %} value="{{ widget.value }}"{% endif %}{% include "floppyforms/attrs.html" %}{% if datalist %} list="{{ widget.attrs.id }}_list"{% endif %}>{% if datalist %}
+<datalist id="{{ widget.attrs.id }}_list">{% for item in datalist %}
 	<option value="{{ item }}">{% endfor %}
 </datalist>{% endif %}{% endblock %}

@@ -1,0 +1,6 @@
+{% get_current_language as LANGUAGE_CODE %}
+
+{% block content %}<input type="{{ widget.type }}" name="{{ widget.name }}"{% if widget.value %} value="{{ widget.value }}" data-lang="{{LANGUAGE_CODE}}" {% endif %}{% include "floppyforms/attrs.html" %}{% if datalist %} list="{{ widget.attrs.id }}_list"{% endif %}>{% if datalist %}
+<datalist id="{{ widget.attrs.id }}_list">{% for item in datalist %}
+	<option value="{{ item }}">{% endfor %}
+</datalist>{% endif %}{% endblock %}

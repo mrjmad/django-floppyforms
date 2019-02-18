@@ -1,1 +1,1 @@
-<textarea name="{{ name }}"{% if required %} required{% endif %}{% include "floppyforms/attrs.html" %}>{% if value %}{{ value }}{% endif %}</textarea>
+<textarea name="{{ widget.name }}"{% include "floppyforms/attrs.html" %}>{% if widget.value %}{{ widget.value }}{% endif %}</textarea>
