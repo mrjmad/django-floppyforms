@@ -106,7 +106,6 @@ else:
             super(TemplateBasedWidget, self).__init__(*args, **kwargs)
 
         def _render(self, template_name, context, renderer=None):
-            print(self.is_required, context['widget']['required'], context['widget']['attrs'])
             context = flatten_contexts(self.context_instance, context)
             return super(TemplateBasedWidget, self)._render(
                 template_name, context, renderer)
