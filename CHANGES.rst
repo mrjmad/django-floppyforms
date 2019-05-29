@@ -4,7 +4,7 @@ Changelog
 1.8.0 (in development)
 ~~~~~~~~~~~~~~~~~~~~~~
 
-* Support for Django 1.11, 2.0 & 2.1
+* Support for Django 1.11, 2.0, 2.1 & 2.2
 * Support for Python 3.7
 * Rename ``floppyforms.forms.LayoutRenderer`` as ``LayoutFormMixin`` in order
   to remove any ambiguity with django renderers/backend API.
